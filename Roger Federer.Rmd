@@ -1,0 +1,211 @@
+---
+title: "Roger Federer"
+author: "Angelo"
+date: "2023-10-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidymodels)
+library(dplyr)
+library(gridExtra)
+```
+
+```{r}
+library(readr)
+g <- read_csv("C:/Users/redbu/Downloads/g.csv")
+g=g[,-c(1,6,10)]
+g = g %>%
+  mutate(result=ifelse(result=="l","Lose","Win"),
+         tourney_level=recode(tourney_level, "A"="Others", "M"="Masters", "G"="Grand Slams", "F"="Others"))
+```
+
+```{r}
+g=g %>%
+  na.omit()
+glimpse(g)
+```
+The dataset has been extracted by Tennis Data Portal (https://count.co/report/g1YaWINtnZL?frame=oQfcfwXW3Ip) and it contains 1525 individuals and 22 features related to Roger Federer's performance, one of the greatest tennis player ever. After some data trasformation and putting out some unuseful columns, we can start our analysis concentrating in first sight to aces. 
+
+```{r}
+graph1 = ggplot(data = g, mapping = aes(x = aces)) +
+  geom_density(aes(fill = "Density", color = "Density"))+
+  geom_vline(mapping=aes(fill="white"),xintercept = mean(g$aces), linetype = "dashed")+
+  xlab("Number of Aces") +
+  ylab("Frequency") +
+  ggtitle("Distribution of Aces") +
+  scale_fill_manual(values = c("Density" = "cyan")) +
+  scale_color_manual(values = c("Density" = "yellow")) +
+  guides(fill = guide_legend(title = "Density"))+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  theme(panel.grid.major.x = element_line(colour = "gray", linetype = "dashed"))
+
+graph2 = ggplot(data = g, mapping = aes(x = df)) +
+  geom_density(aes(fill = "Density", color = "Density"))+
+  geom_vline(mapping=aes(fill="white"),xintercept = mean(g$df), linetype = "dashed")+
+  xlab("Number of Double Fouls") +
+  ylab("Frequency") +
+  ggtitle("Distribution Double Fouls") +
+  scale_fill_manual(values = c("Density" = "green")) +
+  scale_color_manual(values = c("Density" = "red")) +
+  guides(fill = guide_legend(title = "Density"))+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  theme(panel.grid.major.x = element_line(colour = "black", linetype = "dashed"))
+
+subplot1 <- grid.arrange(graph1, graph2, ncol = 2)
+
+print(subplot1)
+```
+
+The comparison between aces' distribution and double fouls' distribution shows a great difference because the first is a unimodal distribution with a mean near 10, with a peak of 50 aces per game which is unbelievable, the second is a multimodal distribution with a mean of 2 double fouls per game.
+
+```{r}
+graph3 = ggplot(data = g, mapping = aes(x = surface, y = aces)) +
+  geom_boxplot(aes(fill = surface)) +
+  xlab("Surface") +
+  ylab("Aces") +
+  ggtitle("Aces vs Surfaces") +
+  scale_fill_brewer(palette = "Set3")+
+  guides(fill = guide_legend(title = "Surface"))+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+graph4 = ggplot(data = g, mapping = aes(x = surface, y = df)) +
+  geom_boxplot(aes(fill = surface)) +
+  xlab("Surface") +
+  ylab("Double Fouls") +
+  ggtitle("Double Fouls vs Surfaces") +
+  scale_fill_brewer(palette = "Set1")+
+  guides(fill = guide_legend(title = "Surface"))+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+subplot2 = grid.arrange(graph3, graph4, ncol = 2)
+
+print(subplot2)
+```
+
+Another important study we can do on the same features is distribution analysis per surface. As we can see, Federer has a much more educated feeling with grass and hard courts than clay and carpet ones because different types of courts have different ways to hit the ball and to respond to enemy attacking moves. In this case Federer has an higher attitude towards hard and grass because they are surfaces where the ball runs fast and with irregural pattern, which favour players with strong service and volley.
+
+```{r}
+tab1 = g %>%
+  select(opponent,result) %>%
+  group_by(opponent) %>%
+  filter(result=="Win") %>%
+  summarize(Total_Wins=n()) %>%
+  arrange(desc(Total_Wins))
+tab1=head(tab1, n=10)
+
+tab1 <- tab1 %>%
+  arrange(desc(Total_Wins))
+
+tab2 = g %>%
+  select(opponent,result) %>%
+  group_by(opponent) %>%
+  filter(result=="Lose") %>%
+  summarize(Total_Defeats=n()) %>%
+  arrange(desc(Total_Defeats))
+tab2=head(tab2, n=10)
+
+tab2 <- tab2 %>%
+  arrange(desc(Total_Defeats))
+
+tab3 = g %>%
+  select(surface, result) %>%
+  filter(result=="Win") %>%
+  group_by(surface) %>%
+  summarize(Total_Wins = n())
+
+tab4 = g %>%
+  select(surface, result) %>%
+  filter(result=="Lose") %>%
+  group_by(surface) %>%
+  summarize(Total_Defeats = n())
+
+tab5 = cbind.data.frame(tab3, tab4[,2])
+
+graph5 = ggplot(data = tab1, mapping = aes(x = opponent, y = Total_Wins, fill = opponent)) +
+  geom_bar(stat = "identity") +
+  scale_fill_brewer(palette = "Set3")+ 
+  xlab("Opponent") +
+  ylab("Total Wins") +
+  ggtitle("Most Federer's Wins Against...") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(axis.text.x = element_text(size = 4))
+
+graph6 = ggplot(data = tab2, mapping = aes(x = opponent, y = Total_Defeats, fill = opponent)) +
+  geom_bar(stat = "identity") +
+  scale_fill_brewer(palette = "Set3")+ 
+  xlab("Opponent") +
+  ylab("Total Wins") +
+  ggtitle("Most Federer's Defeats against...") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(axis.text.x = element_text(size = 4))
+
+subplot3 = grid.arrange(graph5, graph6, ncol=2)
+
+```
+Creating some secondary tables from the original dataset we are going to analyse the comparison between the favorite "victims" and worst opponents of Roger Federer. In the first sight, Federer suffered the entry of Novak Djokovic in international tennis fields because he is the most complete player of all time, having an excellent feeling especially on grass and hard courts and Rafael Nadal's explosion who is the greatest player on clay court (he won 19 Roland Garros). About wins, Federer has been the worst nightmare of Andy Roddick and his tennis generation because his playstyle represented a revolution in this sport, but Novak has suffered Federer qualities too, defetead more than 20 times.
+
+```{r}
+ ggplot(data = tab5, aes(x = surface)) +
+  geom_bar(aes(y = Total_Wins, fill = "Wins"), stat = "identity", position = position_dodge(width = 0.8), width = 0.4) +
+  geom_bar(aes(y = Total_Defeats, fill = "Defeats"), stat = "identity", position = position_dodge(width = 0.8), width = 0.4) +
+  xlab("Surface") +
+  ylab("Wins and Defeats") +
+  ggtitle("Wins and Defeats by Surfaces") +
+  scale_fill_manual(values = c("Wins" = "blue", "Defeats" = "red"))
+```
+
+This graph shows the number of wins and defeats per surface and as we can see Federer as a great player on grass court thanks to his skill in volley and serve.
+
+```{r}
+tab6= g %>%
+  select(bpFaced, `_1stIn`, opponent) %>%
+  filter(opponent==c("Novak Djokovic", "Rafael Nadal"))
+
+ggplot(data = tab6, mapping = aes(x = bpFaced, y = `_1stIn`)) +
+  geom_point(alpha = 0.6, mapping = aes(fill=opponent)) + 
+  scale_fill_brewer(palette = "Set1") +
+  xlab("Break Points Faced") +
+  ylab("Break Points Saved") +
+  ggtitle("Break Points Saved vs Break Points Faced") +
+  labs(fill = "Tournament Level") +  
+  theme(legend.position = "top")
+```
+
+Another important indicator of a very good player is the number of break point saved. Saving a break point can give you the possibility to make a comeback against your opponent. If we want to study the relation between break point faced and break point saved against their greatest rivals, we can see that Federer's difense increased and became better when Djokovic and Nadal gave their best to conquest a break game.
+
+```{r}
+colours = c("Carpet" = "red", "Clay" = "blue", "Hard" = "green", "Grass" = "purple")
+
+ggplot(data = g, mapping = aes(x = `_2ndWon`, y = SvGms, fill = surface)) +
+  geom_point() +
+  scale_color_manual(values = colours) +
+  geom_smooth()+
+  xlab("Age") +
+  ylab("Service Games Won") +
+  ggtitle("Service Games Won vs Age") +
+  labs(fill = "Tournament Level") +   
+  theme(legend.position = "top")  
+
+```
+
+Federer has aged fine like a wine: the number of service game won rose over the years.
+
+```{r}
+ggplot(data = g, aes(x = `_2ndWon`, y = tourney_level, fill = tourney_level)) +
+  geom_violin(alpha = 0.7, trim = FALSE)+
+  geom_errorbar(xmin=0, xmax= max(g$`_2ndWon`))+
+  scale_fill_brewer(palette = "Set1") +
+  xlab("Second Serves Won") +
+  ylab("Tournament Level") +
+  ggtitle("Distribution of Second Serves Won by Tournament Level") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(legend.position = "top")
+```
+
+
+Finally the seconde serve is an important weapon in tennis because it allows players to try a powerful first serve evenn if it goes on the net. Grand Slams' pressure is higher than pressure of other ones, in fact Federer played more second services in those fields.
+
+
